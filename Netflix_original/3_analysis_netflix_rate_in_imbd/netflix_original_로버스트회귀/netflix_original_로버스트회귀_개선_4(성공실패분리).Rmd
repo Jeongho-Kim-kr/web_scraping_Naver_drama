@@ -71,6 +71,7 @@ netflix_drama_failure <- netflix_drama[netflix_drama$All_rating<7.35,]
 ```{r}
 netflix_movie <- netflix[171:589,]
 netflix_movie <- netflix_movie[,c(9,15,18,32:40)]
+
 netflix_movie <- na.omit(netflix_movie)
 netflix_movie[, 4:12] <- lapply(netflix_movie[, 4:12], factor)
 netflix_movie[, 1:3] <- lapply(netflix_movie[, 1:3], as.numeric)
@@ -88,129 +89,42 @@ netflix_movie_success <- netflix_movie[netflix_movie$All_rating>=6.4,]
 netflix_movie_failure <- netflix_movie[netflix_movie$All_rating<6.4,]
 ```
 
-## 데이터 시각화
-
-ggplot2 는 데이터를 시각화하기 위한 패키지
-
-넷플릭스 오리지널을 데이터로 사용하고 미학요소인 aes로 x축을 년도, y축을 전체평점으로 정의한다
-
-geom_boxplot을 이용하여 박스그래프 그림
-
-outlier.colour = 'red' 로 이상치의 색상을 빨간색으로 표현되게 하였다.
-
-xlab: x축 제목, ylab: y축제목, labs: 범례
-
-위의 방식으로 처음 선정한 factor(제작년도, 관람등급, 유해한주제(정도), 선정성, 폭력성, profanity(욕설), 무서움, 마약, Immatatable)를 x축으로 평점을 y축으로 하여 박스플롯형태로 시각화 한다.
-
-### 년도
-
-```{r}
-library(ggplot2)
-ggplot(netflix_original,aes(x=as.factor(Year),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Year)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("년도") + ylab("점수") + labs(fill = "년도")
-```
-
-### Age
-
-```{r}
-ggplot(netflix_original,aes(x=as.factor(Age),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Age)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("age") + ylab("점수") + labs(fill = "Age")
-```
-
-### Harmful_themes
-
-```{r}
-ggplot(netflix_original,aes(x=as.factor(Harmful_themes),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Harmful_themes)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("harmful_themes") + ylab("점수") + labs(fill = "Harmful_themes")
-```
-
-### Lewdness
-
-```{r}
-ggplot(netflix_original,aes(x=as.factor(Lewdness),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Lewdness)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("lewdness") + ylab("점수") + labs(fill = "Lewdness")
-```
-
-### Violence
-
-```{r}
-ggplot(netflix_original,aes(x=as.factor(Violence),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Violence)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("violence") + ylab("점수") + labs(fill = "Violence")
-```
-
-### Profanity
-
-```{r}
-ggplot(netflix_original,aes(x=as.factor(Profanity),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Profanity)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("profanity") + ylab("점수") + labs(fill = "Profanity")
-```
-
-### Fear
-
-```{r}
-ggplot(netflix_original,aes(x=as.factor(Fear),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Fear)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("fear") + ylab("점수") + labs(fill = "Fear")
-```
-
-### Drugs
-
-```{r}
-ggplot(netflix_original,aes(x=as.factor(Drugs),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Drugs)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("drugs") + ylab("점수") + labs(fill = "Drugs")
-```
-
-### Immatatable
-
-```{r}
-ggplot(netflix_original,aes(x=as.factor(Immatatable),y=All_rating))+
-  geom_boxplot(aes(fill=as.factor(Immatatable)),outlier.colour = 'red',alpha=I(0.4))+
-  xlab("immatatable") + ylab("점수") + labs(fill = "Immatatable")
-```
-
 ## 다중공선성확인(GVIF\^(1/(2\*Df)) \> 2시 문제)
 
 ### 종합데이터
 
 ```{r}
 library(car)
-fit_tmp <- lm(All_rating ~ . , data=netflix_original_success)
+fit_tmp <- lm(All_rating ~ . , data=netflix_original_success) # 성공
 vif(fit_tmp)
 ```
 
 ```{r}
-fit_tmp <- lm(All_rating ~ . , data=netflix_original_failure)
+fit_tmp <- lm(All_rating ~ . , data=netflix_original_failure) # 실패
 vif(fit_tmp)
 ```
 
 ### 드라마데이터(there are aliased coefficients in the model)
 
 ```{r}
- # fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
- # vif(fit_tmp)
+# fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
+# vif(fit_tmp)
 ```
 
 ```{r}
- # fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
- # vif(fit_tmp)
+# fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
+# vif(fit_tmp)
 ```
 
 ### 영화데이터
 
 ```{r}
-fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success)
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success) # 성공
 vif(fit_tmp)
 ```
 
 ```{r}
-fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure)
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure) # 실패
 vif(fit_tmp)
 ```
 
@@ -273,7 +187,7 @@ plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance") # cooks 시각�
 # plot() 함수는 x, y 인자 2개를 기본적으로 받습니다.
 # cex : 기호의 크기를 지정할 때 사용 cex에 입력하는 숫자는 디폴트인 cex=1 대비 상대적인 크기를 나타냄.
 
-text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix), names(cooks), ""), col = "red") # 어떤 데이터인지 plot에 표시
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_original_success), names(cooks), ""), col = "red") # 어떤 데이터인지 plot에 표시
 outlier <- names(cooks)[(cooks > 4/nrow(netflix_original_success))] # outlier기준: 4/(sample size)를 넘는 cooks값을 가진 데이터
 outlier <- as.integer(na.omit(outlier))
 netflix_original_success <- netflix_original_success[-outlier, ] # oulier로 판정된 데이터 제거
@@ -284,7 +198,7 @@ fit_tmp <- lm(All_rating ~ . , data=netflix_original_failure)
 cooks <- cooks.distance(fit_tmp)
 plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
 
-text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix), names(cooks), ""), col = "red")
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_original_failure), names(cooks), ""), col = "red")
 outlier <- names(cooks)[(cooks > 4/nrow(netflix_original_failure))]
 outlier <- as.integer(na.omit(outlier))
 netflix_original_failure <- netflix_original_failure[-outlier, ]
@@ -297,7 +211,7 @@ fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
 cooks <- cooks.distance(fit_tmp)
 plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
 
-text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix), names(cooks), ""), col = "red")
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_drama_success), names(cooks), ""), col = "red")
 outlier <- names(cooks)[(cooks > 4/nrow(netflix_drama_success))]
 outlier <- as.integer(na.omit(outlier))
 netflix_drama_success <- netflix_drama_success[-outlier, ]
@@ -308,7 +222,7 @@ fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
 cooks <- cooks.distance(fit_tmp)
 plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
 
-text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix), names(cooks), ""), col = "red")
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_drama_failure), names(cooks), ""), col = "red")
 outlier <- names(cooks)[(cooks > 4/nrow(netflix_drama_failure))]
 outlier <- as.integer(na.omit(outlier))
 netflix_drama_failure <- netflix_drama_failure[-outlier, ]
@@ -321,7 +235,7 @@ fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success)
 cooks <- cooks.distance(fit_tmp)
 plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
 
-text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix), names(cooks), ""), col = "red")
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_movie_success), names(cooks), ""), col = "red")
 outlier <- names(cooks)[(cooks > 4/nrow(netflix_movie_success))]
 outlier <- as.integer(na.omit(outlier))
 netflix_movie_success <- netflix_movie_success[-outlier, ]
@@ -332,7 +246,7 @@ fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure)
 cooks <- cooks.distance(fit_tmp)
 plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
 
-text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix), names(cooks), ""), col = "red")
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_movie_failure), names(cooks), ""), col = "red")
 outlier <- names(cooks)[(cooks > 4/nrow(netflix_movie_failure))]
 outlier <- as.integer(na.omit(outlier))
 netflix_movie_failure <- netflix_movie_failure[-outlier, ]
@@ -543,4 +457,206 @@ ggplot(netflix_movie_failure,aes(x=as.factor(Violence),y=All_rating))+
 ggplot(netflix_movie_failure,aes(x=as.factor(Fear),y=All_rating))+
   geom_boxplot(aes(fill=as.factor(Fear)),outlier.colour = 'red',alpha=I(0.4))+
   xlab("공포") + ylab("점수") + labs(fill = "공포")
+```
+
+## 로버스트 회귀
+
+### 드라마 데이터(성공)
+
+유의한 factor (t값 1.96으로 평가)
+
+```{r}
+library('MASS') # 로버스트 회귀를 위해 MASS 라이브러리 로드
+fit_m_drama_success <- rlm(All_rating ~ . , data=netflix_drama_success)
+summary(fit_m_drama_success)
+```
+
+-   Year2017
+
+-   Year2018
+
+-   Harmful_themes높음
+
+-   Violence높음
+
+-   Violence다소높음
+
+-   Violence보통
+
+-   Fear높음
+
+-   Fear다소높음
+
+-   Fear보통
+
+-   Immatatable높음
+
+-   Immatatable다소높음
+
+### 유의한 factor
+
+```{r}
+fit_m_drama_success_anova <- anova(fit_m_drama_success)
+fit_m_drama_success_anova
+```
+
+```{r}
+drama_MSR <- fit_m_drama_success_anova$`Sum Sq`[10] / 15
+drama_MS <- fit_m_drama_success_anova$`Mean Sq`
+drama_MS[10] <- drama_MSR
+drama_df <- fit_m_drama_success_anova$Df
+drama_F <- numeric(9)
+drama_P <- numeric(9)
+for(i in 1:9){
+  drama_F[i] <- drama_MS[i] / drama_MS[10]
+  drama_P[i] <- pf(q=drama_F[i], df1= drama_df[i], df2= 55, lower.tail = F)
+}
+drama_P
+```
+
+-   Year
+
+#### 모델 유의성 확인
+
+```{r}
+# NAs are not allowed in subscripted assignments
+# par(mfrow = c(2,2))
+# plot(fit_m_drama_success)
+```
+
+### 드라마 데이터(실패)
+
+유의한 factor (t값 1.96으로 평가)
+
+singular 에러 발생으로 기존 데이터에 Jitter()를 이용해 같은 값을 가지는 데이터에 약간의 노이즈를 추가해 진행
+
+```{r}
+# jitter를 이용해 중복쌍이 있어도 로버스트 회귀를 진행
+r_netflix_drama_failure <- data.frame(lapply(netflix_drama_failure, rnorm))
+# 로버스트 회귀
+fit_m_drama_failure <- rlm(All_rating ~ . , data=r_netflix_drama_failure)
+summary(fit_m_drama_failure)
+```
+
+-   Director_max_award
+
+### 유의한 factor
+
+```{r}
+fit_m_drama_failure_anova <- anova(fit_m_drama_failure)
+fit_m_drama_failure_anova
+```
+
+```{r}
+drama_MSR <- fit_m_drama_failure_anova$`Sum Sq`[10] / 21
+drama_MS <- fit_m_drama_failure_anova$`Mean Sq`
+drama_MS[10] <- drama_MSR
+drama_df <- fit_m_drama_failure_anova$Df
+drama_F <- numeric(9)
+drama_P <- numeric(9)
+for(i in 1:9){
+  drama_F[i] <- drama_MS[i] / drama_MS[10]
+  drama_P[i] <- pf(q=drama_F[i], df1= drama_df[i], df2= 55, lower.tail = F)
+}
+drama_P
+```
+
+-   Director_max_award
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit_m_drama_failure)
+```
+
+### 영화 데이터
+
+### 영화 데이터(성공)
+
+유의한 factor (t값 1.96으로 평가)
+
+```{r}
+fit_m_movie_success <- rlm(All_rating ~ . , data=netflix_movie_success)
+summary(fit_m_movie_success)
+```
+
+-   Director_max_award
+
+-   Immatatable높음
+
+### 유의한 factor
+
+```{r}
+fit_m_movie_success_anova <- anova(fit_m_movie_success)
+fit_m_movie_success_anova
+```
+
+```{r}
+movie_MSR <- fit_m_movie_success_anova$`Sum Sq`[11] / 173
+movie_MS <- fit_m_movie_success_anova$`Mean Sq`
+movie_MS[11] <- movie_MSR
+movie_df <- fit_m_movie_success_anova$Df
+movie_F <- numeric(10)
+movie_P <- numeric(10)
+for(i in 1:10){
+  movie_F[i] <- movie_MS[i] / movie_MS[11]
+  movie_P[i] <- pf(q=movie_F[i], df1= movie_df[i], df2= 360, lower.tail = F)
+}
+movie_P
+```
+
+-   Director_max_award
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit_m_movie_success)
+```
+
+### 영화 데이터(실패)
+
+유의한 factor (t값 1.96으로 평가)
+
+singular 에러 발생으로 기존 데이터에 Jitter()를 이용해 같은 값을 가지는 데이터에 약간의 노이즈를 추가해 진행
+
+```{r}
+# jitter를 이용해 중복쌍이 있어도 로버스트 회귀를 진행
+r_netflix_movie_failure <- data.frame(lapply(netflix_movie_failure, rnorm))
+# 로버스트회귀
+fit_m_movie_failure <- rlm(All_rating ~ . , data=r_netflix_movie_failure)
+summary(fit_m_movie_failure)
+```
+
+-   Harmful_themes
+
+### 유의한 factor
+
+```{r}
+fit_m_movie_failure_anova <- anova(fit_m_movie_failure)
+fit_m_movie_failure_anova
+```
+
+```{r}
+movie_MSR <- fit_m_movie_failure_anova$`Sum Sq`[11] / 172
+movie_MS <- fit_m_movie_failure_anova$`Mean Sq`
+movie_MS[11] <- movie_MSR
+movie_df <- fit_m_movie_failure_anova$Df
+movie_F <- numeric(10)
+movie_P <- numeric(10)
+for(i in 1:10){
+  movie_F[i] <- movie_MS[i] / movie_MS[11]
+  movie_P[i] <- pf(q=movie_F[i], df1= movie_df[i], df2= 360, lower.tail = F)
+}
+movie_P
+```
+
+-   Harmful_themes
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit_m_movie_failure)
 ```

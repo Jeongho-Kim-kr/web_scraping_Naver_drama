@@ -1,0 +1,562 @@
+---
+title: "netflix_original_로버스트회귀"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA)
+```
+
+## 데이터 정의(성공, 실패군집)
+
+```{r}
+rm(list=ls())
+
+library(readxl) # readxl 패키지로 엑셀을 읽을 수 있게 해줌
+netflix <- read_excel('netflix_original_종합_수정(sum)_(정량화보함).xlsx') # 넷플릭스 오리지널 엑셀데이터를 읽어옴
+```
+
+결과값의 차이를 확인해 보기 위해 드라마 데이터, 영화 데이터의 회귀를 각각 돌려보았습니다
+
+### 드라마 데이터
+
+드라마 데이터와 영화 데이터도 위와 같은 방식인데, 행의 차이만 있음.
+
+드라마와 영화데이터를 나눈 기준은 seasons 항목이 공백이면 영화, 값이 있으면 드라마로 분류하여 분석하였음.
+
+```{r}
+netflix_drama <- netflix[1:170,]
+netflix_drama <- netflix_drama[,c(9,15,18,32:40)]
+netflix_drama <- na.omit(netflix_drama)
+netflix_drama[, 4:12] <- lapply(netflix_drama[, 4:12], factor)
+netflix_drama[, 1:3] <- lapply(netflix_drama[, 1:3], as.numeric)
+```
+
+```{r}
+hist(netflix_drama$All_rating, seq(0,10)) # 7.6점을 기준으로 성공 실패 자름
+median(netflix_drama$All_rating)
+quantile(as.integer(netflix_drama$All_rating))
+```
+
+```{r}
+# 성공 실패 나누기
+netflix_drama_success <- netflix_drama[netflix_drama$All_rating>=7.6,]
+netflix_drama_failure <- netflix_drama[netflix_drama$All_rating<7.6,]
+```
+
+### 영화 데이터
+
+```{r}
+netflix_movie <- netflix[171:589,]
+netflix_movie <- netflix_movie[,c(9,15,18,32:40)]
+netflix_movie <- na.omit(netflix_movie)
+netflix_movie[, 4:12] <- lapply(netflix_movie[, 4:12], factor)
+netflix_movie[, 1:3] <- lapply(netflix_movie[, 1:3], as.numeric)
+```
+
+```{r}
+hist(netflix_movie$All_rating, seq(0,10)) # 6.1점을 기준으로 성공 실패 자름
+median(netflix_movie$All_rating)
+quantile(as.integer(netflix_movie$All_rating))
+```
+
+```{r}
+# 성공 실패 나누기
+netflix_movie_success <- netflix_movie[netflix_movie$All_rating>=6.1,]
+netflix_movie_failure <- netflix_movie[netflix_movie$All_rating<6.1,]
+```
+
+## 다중공선성확인(GVIF\^(1/(2\*Df)) \> 2시 문제)
+
+### 드라마데이터
+
+there are aliased coefficients in the mode(한 변수가 큰 다중공선성을 발생)
+
+```{r}
+# fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
+# vif(fit_tmp)
+```
+
+```{r}
+# fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
+# vif(fit_tmp)
+```
+
+### 영화데이터
+
+```{r}
+library(car)
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success) # 성공
+vif(fit_tmp)
+```
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure) # 실패
+vif(fit_tmp)
+```
+
+### 드라마데이터
+
+다중공선성 문제를 발생하는 변수(Age, Harmful, Profanity, Immatatable) 제거
+
+```{r}
+netflix_drama_success <- netflix_drama_success[,c(-4,-6,-9,-12)] # Age, Harmful, Profanity, Immatatable제거
+fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
+vif(fit_tmp)
+```
+
+```{r}
+netflix_drama_failure <- netflix_drama_failure[,c(-4,-6,-9,-12)] # Age, Harmful, Profanity, Immatatable제거
+fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
+vif(fit_tmp)
+```
+
+### 영화데이터
+
+```{r}
+netflix_movie_success <- netflix_movie_success[,-4] # Age제거
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success)
+vif(fit_tmp)
+```
+
+```{r}
+netflix_movie_failure <- netflix_movie_failure[,-4] # Age제거
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure)
+vif(fit_tmp)
+```
+
+## Cooks distance outlier제거
+
+종합데이터, 드라마데이터, 영화데이터를 가지고 outlier(이상치)를 제거하는 기준으로 cooks distance를 사용하였다.
+
+### 드라마 데이터
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
+cooks <- cooks.distance(fit_tmp)
+plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
+
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_drama_success), names(cooks), ""), col = "red")
+outlier <- names(cooks)[(cooks > 4/nrow(netflix_drama_success))]
+outlier <- as.integer(na.omit(outlier))
+netflix_drama_success <- netflix_drama_success[-outlier, ]
+```
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
+cooks <- cooks.distance(fit_tmp)
+plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
+
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_drama_failure), names(cooks), ""), col = "red")
+outlier <- names(cooks)[(cooks > 4/nrow(netflix_drama_failure))]
+outlier <- as.integer(na.omit(outlier))
+netflix_drama_failure <- netflix_drama_failure[-outlier, ]
+```
+
+### 영화 데이터
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success)
+cooks <- cooks.distance(fit_tmp)
+plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
+
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_movie_success), names(cooks), ""), col = "red")
+outlier <- names(cooks)[(cooks > 4/nrow(netflix_movie_success))]
+outlier <- as.integer(na.omit(outlier))
+netflix_movie_success <- netflix_movie_success[-outlier, ]
+```
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure)
+cooks <- cooks.distance(fit_tmp)
+plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
+
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_movie_failure), names(cooks), ""), col = "red")
+outlier <- names(cooks)[(cooks > 4/nrow(netflix_movie_failure))]
+outlier <- as.integer(na.omit(outlier))
+netflix_movie_failure <- netflix_movie_failure[-outlier, ]
+```
+
+## 일반회귀
+
+### 드라마 데이터(성공)
+
+#### 세부 factor에서 유의한 값
+
+```{r}
+fit_OLS_drama_success <- lm(All_rating ~ . , data=netflix_drama_success)
+summary(fit_OLS_drama_success)
+```
+
+#### 유의한 factor
+
+```{r}
+anova(fit_OLS_drama_success)
+```
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit_OLS_drama_success)
+```
+
+```{r}
+# 더빈 왓슨테스트
+library(lmtest)
+dwtest(fit_OLS_drama_success)
+```
+
+### 드라마 데이터(실패)
+
+#### 세부 factor에서 유의한 값
+
+```{r}
+fit_OLS_drama_failure <- lm(All_rating ~ . , data=netflix_drama_failure)
+summary(fit_OLS_drama_failure)
+```
+
+#### 유의한 factor
+
+```{r}
+anova(fit_OLS_drama_failure)
+```
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit_OLS_drama_failure)
+```
+
+```{r}
+# 더빈 왓슨테스트
+dwtest(fit_OLS_drama_failure)
+```
+
+### 영화 데이터(성공)
+
+#### 세부 factor에서 유의한 값
+
+```{r}
+fit_OLS_movie_success <- lm(All_rating ~ . , data=netflix_movie_success)
+summary(fit_OLS_movie_success)
+```
+
+### 유의한 factor
+
+```{r}
+anova(fit_OLS_movie_success)
+```
+
+#### 모델 유의성 확인
+
+#### 세부 factor에서 유의한 값
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit_OLS_movie_success)
+```
+
+```{r}
+# 더빈 왓슨테스트
+dwtest(fit_OLS_movie_success)
+```
+
+### 영화 데이터(실패)
+
+```{r}
+fit_OLS_movie_failure <- lm(All_rating ~ . , data=netflix_movie_failure)
+summary(fit_OLS_movie_failure)
+```
+
+### 유의한 factor
+
+```{r}
+anova(fit_OLS_movie_failure)
+```
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit_OLS_movie_failure)
+```
+
+```{r}
+# 더빈 왓슨테스트
+dwtest(fit_OLS_movie_failure)
+```
+
+## 데이터 정의(성공, 실패군집)
+
+```{r}
+rm(list=ls())
+
+library(readxl) # readxl 패키지로 엑셀을 읽을 수 있게 해줌
+netflix <- read_excel('netflix_original_종합_수정(sum)_(정량화보함).xlsx') # 넷플릭스 오리지널 엑셀데이터를 읽어옴
+```
+
+### 드라마 데이터
+
+```{r}
+netflix_drama <- netflix[1:170,]
+netflix_drama <- netflix_drama[,c(9,15,18,32:40)]
+netflix_drama <- na.omit(netflix_drama)
+netflix_drama[, 4:12] <- lapply(netflix_drama[, 4:12], factor)
+netflix_drama[, 1:3] <- lapply(netflix_drama[, 1:3], as.numeric)
+```
+
+```{r}
+hist(netflix_drama$All_rating, seq(0,10)) # 7.6점을 기준으로 성공 실패 자름
+median(netflix_drama$All_rating)
+quantile(as.integer(netflix_drama$All_rating))
+```
+
+```{r}
+# 성공 실패 나누기
+netflix_drama_success <- netflix_drama[netflix_drama$All_rating>=7.6,]
+netflix_drama_failure <- netflix_drama[netflix_drama$All_rating<7.6,]
+```
+
+### 영화 데이터
+
+```{r}
+netflix_movie <- netflix[171:589,]
+netflix_movie <- netflix_movie[,c(9,15,18,32:40)]
+netflix_movie <- na.omit(netflix_movie)
+netflix_movie[, 4:12] <- lapply(netflix_movie[, 4:12], factor)
+netflix_movie[, 1:3] <- lapply(netflix_movie[, 1:3], as.numeric)
+```
+
+```{r}
+hist(netflix_movie$All_rating, seq(0,10)) # 6.1점을 기준으로 성공 실패 자름
+median(netflix_movie$All_rating)
+quantile(as.integer(netflix_movie$All_rating))
+```
+
+```{r}
+# 성공 실패 나누기
+netflix_movie_success <- netflix_movie[netflix_movie$All_rating>=6.1,]
+netflix_movie_failure <- netflix_movie[netflix_movie$All_rating<6.1,]
+```
+
+## 다중공선성확인(GVIF\^(1/(2\*Df)) \> 2시 문제)
+
+### 드라마데이터
+
+there are aliased coefficients in the mode(한 변수가 큰 다중공선성을 발생)
+
+```{r}
+# fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
+# vif(fit_tmp)
+```
+
+```{r}
+# fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
+# vif(fit_tmp)
+```
+
+### 영화데이터
+
+```{r}
+library(car)
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success) # 성공
+vif(fit_tmp)
+```
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure) # 실패
+vif(fit_tmp)
+```
+
+### 드라마데이터
+
+다중공선성 문제를 발생하는 변수(Age, Harmful, Profanity, Immatatable) 제거
+
+```{r}
+netflix_drama_success <- netflix_drama_success[,c(-4,-6,-9,-12)] # Age, Harmful, Profanity, Immatatable제거
+fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
+vif(fit_tmp)
+```
+
+```{r}
+netflix_drama_failure <- netflix_drama_failure[,c(-4,-6,-9,-12)] # Age, Harmful, Profanity, Immatatable제거
+fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
+vif(fit_tmp)
+```
+
+### 영화데이터
+
+```{r}
+netflix_movie_success <- netflix_movie_success[,-4] # Age제거
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success)
+vif(fit_tmp)
+```
+
+```{r}
+netflix_movie_failure <- netflix_movie_failure[,-4] # Age제거
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure)
+vif(fit_tmp)
+```
+
+## Cooks distance outlier제거
+
+### 드라마 데이터
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_drama_success)
+cooks <- cooks.distance(fit_tmp)
+plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
+
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_drama_success), names(cooks), ""), col = "red")
+outlier <- names(cooks)[(cooks > 4/nrow(netflix_drama_success))]
+outlier <- as.integer(na.omit(outlier))
+netflix_drama_success <- netflix_drama_success[-outlier, ]
+```
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_drama_failure)
+cooks <- cooks.distance(fit_tmp)
+plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
+
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_drama_failure), names(cooks), ""), col = "red")
+outlier <- names(cooks)[(cooks > 4/nrow(netflix_drama_failure))]
+outlier <- as.integer(na.omit(outlier))
+netflix_drama_failure <- netflix_drama_failure[-outlier, ]
+```
+
+### 영화 데이터
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_success)
+cooks <- cooks.distance(fit_tmp)
+plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
+
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_movie_success), names(cooks), ""), col = "red")
+outlier <- names(cooks)[(cooks > 4/nrow(netflix_movie_success))]
+outlier <- as.integer(na.omit(outlier))
+netflix_movie_success <- netflix_movie_success[-outlier, ]
+```
+
+```{r}
+fit_tmp <- lm(All_rating ~ . , data=netflix_movie_failure)
+cooks <- cooks.distance(fit_tmp)
+plot(cooks, pch=".", cex=1.5, main = "Plot for Cook's Distance")
+
+text(x=1:length(cooks), y=cooks, labels = ifelse(cooks > 4/nrow(netflix_movie_failure), names(cooks), ""), col = "red")
+outlier <- names(cooks)[(cooks > 4/nrow(netflix_movie_failure))]
+outlier <- as.integer(na.omit(outlier))
+netflix_movie_failure <- netflix_movie_failure[-outlier, ]
+```
+
+## backward
+
+### 드라마 데이터(성공)
+
+#### backward
+
+```{r}
+library(MASS)
+model.2 = lm(All_rating ~ Mean_Length + Director_max_award + Year + Lewdness + Violence + Fear + Drugs, netflix_drama_success)
+step.backward = stepAIC(model.2, direction = "backward")
+```
+
+#### backward 일반회귀
+
+```{r}
+fit_OLS_drama_backward <- lm(All_rating ~ Director_max_award + Year + Lewdness + Violence + Drugs, data=netflix_drama_success)
+summary(fit_OLS_drama_backward)
+```
+
+```{r}
+anova(fit_OLS_drama_backward) # 유의한 factor를 확인하기 위해 ANOVA함수를 이용함
+```
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2)) # 한 화면에 여러 개의 그래프를 그려 비교하기 위해 par함수 사용
+plot(fit_OLS_drama_backward)
+```
+
+### 드라마 데이터(실패)
+
+#### backward
+
+```{r}
+model.2 = lm(All_rating ~ Mean_Length + Director_max_award + Year + Lewdness + Violence + Fear + Drugs, netflix_drama_failure)
+step.backward = stepAIC(model.2, direction = "backward")
+```
+
+#### backward 일반회귀
+
+```{r}
+fit_OLS_drama_backward <- lm(All_rating ~ Violence + Fear + Drugs, data=netflix_drama_failure)
+summary(fit_OLS_drama_backward)
+```
+
+```{r}
+anova(fit_OLS_drama_backward) # 유의한 factor를 확인하기 위해 ANOVA함수를 이용함
+```
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2)) # 한 화면에 여러 개의 그래프를 그려 비교하기 위해 par함수 사용
+plot(fit_OLS_drama_backward)
+```
+
+### 영화 데이터(성공)
+
+#### backward
+
+```{r}
+model.2 = lm(All_rating ~ Mean_Length + Director_max_award + Year + Lewdness + Violence + Profanity + Fear + Drugs + Immatatable, netflix_movie_success)
+step.backward = stepAIC(model.2, direction = "backward")
+```
+
+#### backward 일반회귀
+
+```{r}
+fit_OLS_movie_backward <- lm(All_rating ~ Director_max_award + Year + Drugs + Immatatable, data=netflix_movie_success)
+summary(fit_OLS_movie_backward)
+```
+
+```{r}
+anova(fit_OLS_movie_backward) # 유의한 factor를 확인하기 위해 ANOVA함수를 이용함
+```
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2)) # 한 화면에 여러 개의 그래프를 그려 비교하기 위해 par함수 사용
+plot(fit_OLS_movie_backward)
+```
+
+### 영화 데이터(실패)
+
+#### backward
+
+```{r}
+model.2 = lm(All_rating ~ Mean_Length + Director_max_award + Year + Lewdness + Violence + Profanity + Fear + Drugs + Immatatable, netflix_movie_failure)
+step.backward = stepAIC(model.2, direction = "backward")
+```
+
+#### backward 일반회귀
+
+```{r}
+fit_OLS_movie_backward <- lm(All_rating ~ Mean_Length + Violence + Profanity + Fear + Drugs + Immatatable, data=netflix_movie_failure)
+summary(fit_OLS_movie_backward)
+```
+
+```{r}
+anova(fit_OLS_movie_backward) # 유의한 factor를 확인하기 위해 ANOVA함수를 이용함
+```
+
+#### 모델 유의성 확인
+
+```{r}
+par(mfrow = c(2,2)) # 한 화면에 여러 개의 그래프를 그려 비교하기 위해 par함수 사용
+plot(fit_OLS_movie_backward)
+```
